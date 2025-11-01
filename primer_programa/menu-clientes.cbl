@@ -62,6 +62,11 @@ WORKING-STORAGE SECTION.
 
 01 OPCION-SELECCIONADA-REPORTE  PIC 9 VALUE 0.
 
+01 MONTO-FILTRO PIC S9(5)V99.
+
+
+01 TOTAL-MOSTRAR PIC Z(5).
+
 PROCEDURE DIVISION.
 
 PROGRAMA-PRINCIPAL.
@@ -310,6 +315,51 @@ ACTUALIZAR-CLIENTE.
     ELSE
         MOVE "A" TO ACCION-ID
         PERFORM PEDIR-ID
+        MOVE "N" TO ENCONTRADO
+
+        OPEN INPUT ARCHIVO-CLIENTES
+        OPEN OUTPUT ARCHIVO-TEMPORAL
+        MOVE "00" TO ESTADO-ARCHIVO
+
+        PERFORM UNTIL ESTADO-ARCHIVO = "10"
+            READ ARCHIVO-CLIENTES
+                AT END MOVE "10" TO ESTADO-ARCHIVO
+                NOT AT END
+                    IF ID-CLIENTE = BUSCAR-ID
+                        MOVE "S" TO ENCONTRADO
+                        DISPLAY "Cliente encontrado. Ingrese los nuevos datos:"
+                        MOVE SPACES TO CLIENTE-INGRESADO
+                        MOVE ZEROS TO SALDO-INGRESADO
+                        PERFORM INGRESAR-DATOS-CLIENTE
+
+                        MOVE ID-CLIENTE TO ID-TEMP
+                        MOVE NOMBRE-INGRESADO TO NOMBRE-TEMP
+                        MOVE CORREO-INGRESADO TO CORREO-TEMP
+                        MOVE TELEFONO-INGRESADO TO TELEFONO-TEMP
+                        MOVE SALDO-INGRESADO TO SALDO-TEMP
+                        WRITE REGISTRO-TEMP
+                    ELSE
+                        MOVE ID-CLIENTE TO ID-TEMP
+                        MOVE NOMBRE TO NOMBRE-TEMP
+                        MOVE CORREO TO CORREO-TEMP
+                        MOVE TELEFONO TO TELEFONO-TEMP
+                        MOVE SALDO TO SALDO-TEMP
+                        WRITE REGISTRO-TEMP
+                    END-IF
+            END-READ
+        END-PERFORM
+
+        CLOSE ARCHIVO-CLIENTES
+        CLOSE ARCHIVO-TEMPORAL
+
+        IF ENCONTRADO = "S"
+            CALL "CBL_DELETE_FILE" USING "..\clientes.txt"
+            CALL "CBL_RENAME_FILE" USING "..\clientes_temp.txt", "..\clientes.txt"
+            DISPLAY "Datos del cliente actualizados correctamente."
+        ELSE
+            CALL "CBL_DELETE_FILE" USING "..\clientes_temp.txt"
+            DISPLAY "No se encontró ningún cliente con ese ID."
+        END-IF
     END-IF
     .
 
@@ -376,13 +426,13 @@ GENERAR-REPORTES.
             WHEN 1
                 PERFORM MOSTRAR-CLIENTES
             WHEN 2
-                DISPLAY "Reporte 2"
+                PERFORM CLIENTES-CON-SALDO-MAYOR
             WHEN 3
                 DISPLAY "Reporte 3"
             WHEN 4
                 DISPLAY "Reporte 4"
             WHEN 5
-                DISPLAY "Reporte 5"
+                PERFORM MOSTRAR-TOTAL-CLIENTES
             WHEN 6
                 DISPLAY "Reporte 6"
             WHEN 7
@@ -393,4 +443,53 @@ GENERAR-REPORTES.
     END-PERFORM
 
     PERFORM PROGRAMA-PRINCIPAL
+    .
+
+
+CLIENTES-CON-SALDO-MAYOR.
+    PERFORM CONTAR-CLIENTES
+    IF CONTADOR-ID = 0
+        DISPLAY "No hay clientes registrados en el sistema."
+    ELSE
+        DISPLAY "Ingrese el monto minimo de saldo para filtrar:"
+        ACCEPT MONTO-FILTRO
+
+        OPEN INPUT ARCHIVO-CLIENTES
+        MOVE "00" TO ESTADO-ARCHIVO
+        MOVE 0 TO CONTADOR-ID
+
+        PERFORM UNTIL ESTADO-ARCHIVO = "10"
+            READ ARCHIVO-CLIENTES
+                AT END MOVE "10" TO ESTADO-ARCHIVO
+                NOT AT END
+                    IF SALDO > MONTO-FILTRO
+                        ADD 1 TO CONTADOR-ID
+                        MOVE SALDO TO SALDO-MOSTRAR
+                        DISPLAY "ID: " ID-CLIENTE
+                        DISPLAY "Nombre: " NOMBRE
+                        DISPLAY "Correo: " CORREO
+                        DISPLAY "Telefono: " TELEFONO
+                        DISPLAY "Saldo: " SALDO-MOSTRAR
+                        DISPLAY "-----------------------------"
+                    END-IF
+            END-READ
+        END-PERFORM
+
+        CLOSE ARCHIVO-CLIENTES
+
+        IF CONTADOR-ID = 0
+            DISPLAY "No se encontraron clientes con saldo mayor a ese monto."
+        END-IF
+    END-IF
+    .
+
+MOSTRAR-TOTAL-CLIENTES.
+    PERFORM CONTAR-CLIENTES
+
+    IF CONTADOR-ID = 0
+        DISPLAY "No hay clientes registrados en el sistema."
+    ELSE
+        MOVE CONTADOR-ID TO TOTAL-MOSTRAR
+        DISPLAY "Total de clientes registrados: " TOTAL-MOSTRAR
+    END-IF
     .
