@@ -64,8 +64,31 @@ WORKING-STORAGE SECTION.
 
 01 MONTO-FILTRO PIC S9(5)V99.
 
+01 ORDEN-SELECCIONADO PIC X VALUE SPACE.
+
+01 TABLA-CLIENTES.
+   05 CLIENTE-TABLA OCCURS 100 TIMES INDEXED BY IDX IDX2.
+      10 ID-TABLA         PIC 9(5).
+      10 NOMBRE-TABLA     PIC X(30).
+      10 CORREO-TABLA     PIC X(40).
+      10 TELEFONO-TABLA   PIC X(15).
+      10 SALDO-TABLA      PIC S9(5)V99.
+
+01 AUX-ID       PIC 9(5).
+01 AUX-NOMBRE   PIC X(30).
+01 AUX-CORREO   PIC X(40).
+01 AUX-TELEFONO PIC X(15).
+01 AUX-SALDO    PIC S9(5)V99.
+
+01 INDICE-1     PIC 9(3) VALUE 1.
+01 INDICE-2     PIC 9(3) VALUE 1.
+
 
 01 TOTAL-MOSTRAR PIC Z(5).
+
+01 SUMA-SALDOS        PIC S9(7)V99 VALUE 0.
+01 PROMEDIO-SALDO     PIC S9(5)V99 VALUE 0.
+01 PROMEDIO-MOSTRAR   PIC -Z(5).99.
 
 PROCEDURE DIVISION.
 
@@ -428,13 +451,13 @@ GENERAR-REPORTES.
             WHEN 2
                 PERFORM CLIENTES-CON-SALDO-MAYOR
             WHEN 3
-                DISPLAY "Reporte 3"
+                PERFORM CLIENTES-SALDO-NEGATIVO-O-CERO
             WHEN 4
-                DISPLAY "Reporte 4"
+                PERFORM CLIENTES-ORDENADOS-POR-SALDO
             WHEN 5
                 PERFORM MOSTRAR-TOTAL-CLIENTES
             WHEN 6
-                DISPLAY "Reporte 6"
+                PERFORM CALCULAR-PROMEDIO-SALDO
             WHEN 7
                 DISPLAY "Volviendo al menu principal..."
             WHEN OTHER
@@ -444,7 +467,6 @@ GENERAR-REPORTES.
 
     PERFORM PROGRAMA-PRINCIPAL
     .
-
 
 CLIENTES-CON-SALDO-MAYOR.
     PERFORM CONTAR-CLIENTES
@@ -483,6 +505,131 @@ CLIENTES-CON-SALDO-MAYOR.
     END-IF
     .
 
+CLIENTES-SALDO-NEGATIVO-O-CERO.
+    PERFORM CONTAR-CLIENTES
+    IF CONTADOR-ID = 0
+        DISPLAY "No hay clientes registrados en el sistema."
+    ELSE
+        OPEN INPUT ARCHIVO-CLIENTES
+        MOVE "00" TO ESTADO-ARCHIVO
+        MOVE 0 TO CONTADOR-ID
+
+        PERFORM UNTIL ESTADO-ARCHIVO = "10"
+            READ ARCHIVO-CLIENTES
+                AT END MOVE "10" TO ESTADO-ARCHIVO
+                NOT AT END
+                    IF SALDO <= 0
+                        ADD 1 TO CONTADOR-ID
+                        MOVE SALDO TO SALDO-MOSTRAR
+                        DISPLAY "ID: " ID-CLIENTE
+                        DISPLAY "Nombre: " NOMBRE
+                        DISPLAY "Correo: " CORREO
+                        DISPLAY "Telefono: " TELEFONO
+                        DISPLAY "Saldo: " SALDO-MOSTRAR
+                        DISPLAY "-----------------------------"
+                    END-IF
+            END-READ
+        END-PERFORM
+
+        CLOSE ARCHIVO-CLIENTES
+
+        IF CONTADOR-ID = 0
+            DISPLAY "No se encontraron clientes con saldo negativo o en cero."
+        END-IF
+    END-IF
+    .
+CLIENTES-ORDENADOS-POR-SALDO.
+    MOVE 0 TO CONTADOR-ID
+    OPEN INPUT ARCHIVO-CLIENTES
+    MOVE "00" TO ESTADO-ARCHIVO
+
+    PERFORM UNTIL ESTADO-ARCHIVO = "10"
+        READ ARCHIVO-CLIENTES
+            AT END MOVE "10" TO ESTADO-ARCHIVO
+            NOT AT END
+                ADD 1 TO CONTADOR-ID
+                MOVE ID-CLIENTE TO ID-TABLA(CONTADOR-ID)
+                MOVE NOMBRE TO NOMBRE-TABLA(CONTADOR-ID)
+                MOVE CORREO TO CORREO-TABLA(CONTADOR-ID)
+                MOVE TELEFONO TO TELEFONO-TABLA(CONTADOR-ID)
+                MOVE SALDO TO SALDO-TABLA(CONTADOR-ID)
+        END-READ
+    END-PERFORM
+
+    CLOSE ARCHIVO-CLIENTES
+
+    IF CONTADOR-ID = 0
+        DISPLAY "No hay clientes registrados en el sistema."
+    ELSE
+        DISPLAY "¿Como desea ordenar los saldos?"
+        DISPLAY "A. De menor a mayor"
+        DISPLAY "B. De mayor a menor"
+        DISPLAY "Seleccione una opción (A/B):"
+        ACCEPT ORDEN-SELECCIONADO
+
+        MOVE FUNCTION UPPER-CASE(ORDEN-SELECCIONADO) TO ORDEN-SELECCIONADO
+
+        MOVE 1 TO INDICE-1
+        PERFORM UNTIL INDICE-1 > CONTADOR-ID
+            MOVE INDICE-1 TO INDICE-2
+            ADD 1 TO INDICE-2
+            PERFORM UNTIL INDICE-2 > CONTADOR-ID
+                EVALUATE ORDEN-SELECCIONADO
+                    WHEN "A"
+                        IF SALDO-TABLA(INDICE-2) < SALDO-TABLA(INDICE-1)
+                            PERFORM INTERCAMBIAR-CLIENTES
+                        END-IF
+                    WHEN "B"
+                        IF SALDO-TABLA(INDICE-2) > SALDO-TABLA(INDICE-1)
+                            PERFORM INTERCAMBIAR-CLIENTES
+                        END-IF
+                    WHEN OTHER
+                        DISPLAY "Opcion invalida. Se usara orden ascendente por defecto."
+                        IF SALDO-TABLA(INDICE-2) < SALDO-TABLA(INDICE-1)
+                            PERFORM INTERCAMBIAR-CLIENTES
+                        END-IF
+                END-EVALUATE
+                ADD 1 TO INDICE-2
+            END-PERFORM
+            ADD 1 TO INDICE-1
+        END-PERFORM
+
+        DISPLAY "Clientes ordenados por saldo:"
+        MOVE 1 TO INDICE-1
+        PERFORM UNTIL INDICE-1 > CONTADOR-ID
+            MOVE SALDO-TABLA(INDICE-1) TO SALDO-MOSTRAR
+            DISPLAY "ID: " ID-TABLA(INDICE-1)
+            DISPLAY "Nombre: " NOMBRE-TABLA(INDICE-1)
+            DISPLAY "Correo: " CORREO-TABLA(INDICE-1)
+            DISPLAY "Telefono: " TELEFONO-TABLA(INDICE-1)
+            DISPLAY "Saldo: " SALDO-MOSTRAR
+            DISPLAY "-----------------------------"
+            ADD 1 TO INDICE-1
+        END-PERFORM
+    END-IF
+    .
+
+INTERCAMBIAR-CLIENTES.
+    MOVE ID-TABLA(INDICE-1) TO AUX-ID
+    MOVE NOMBRE-TABLA(INDICE-1) TO AUX-NOMBRE
+    MOVE CORREO-TABLA(INDICE-1) TO AUX-CORREO
+    MOVE TELEFONO-TABLA(INDICE-1) TO AUX-TELEFONO
+    MOVE SALDO-TABLA(INDICE-1) TO AUX-SALDO
+
+    MOVE ID-TABLA(INDICE-2) TO ID-TABLA(INDICE-1)
+    MOVE NOMBRE-TABLA(INDICE-2) TO NOMBRE-TABLA(INDICE-1)
+    MOVE CORREO-TABLA(INDICE-2) TO CORREO-TABLA(INDICE-1)
+    MOVE TELEFONO-TABLA(INDICE-2) TO TELEFONO-TABLA(INDICE-1)
+    MOVE SALDO-TABLA(INDICE-2) TO SALDO-TABLA(INDICE-1)
+
+    MOVE AUX-ID TO ID-TABLA(INDICE-2)
+    MOVE AUX-NOMBRE TO NOMBRE-TABLA(INDICE-2)
+    MOVE AUX-CORREO TO CORREO-TABLA(INDICE-2)
+    MOVE AUX-TELEFONO TO TELEFONO-TABLA(INDICE-2)
+    MOVE AUX-SALDO TO SALDO-TABLA(INDICE-2)
+    .
+
+
 MOSTRAR-TOTAL-CLIENTES.
     PERFORM CONTAR-CLIENTES
 
@@ -491,5 +638,31 @@ MOSTRAR-TOTAL-CLIENTES.
     ELSE
         MOVE CONTADOR-ID TO TOTAL-MOSTRAR
         DISPLAY "Total de clientes registrados: " TOTAL-MOSTRAR
+    END-IF
+    .
+
+CALCULAR-PROMEDIO-SALDO.
+    MOVE 0 TO CONTADOR-ID
+    MOVE 0 TO SUMA-SALDOS
+    OPEN INPUT ARCHIVO-CLIENTES
+    MOVE "00" TO ESTADO-ARCHIVO
+
+    PERFORM UNTIL ESTADO-ARCHIVO = "10"
+        READ ARCHIVO-CLIENTES
+            AT END MOVE "10" TO ESTADO-ARCHIVO
+            NOT AT END
+                ADD 1 TO CONTADOR-ID
+                ADD SALDO TO SUMA-SALDOS
+        END-READ
+    END-PERFORM
+
+    CLOSE ARCHIVO-CLIENTES
+
+    IF CONTADOR-ID = 0
+        DISPLAY "No hay clientes registrados en el sistema."
+    ELSE
+        COMPUTE PROMEDIO-SALDO = SUMA-SALDOS / CONTADOR-ID
+        MOVE PROMEDIO-SALDO TO PROMEDIO-MOSTRAR
+        DISPLAY "Promedio general de saldo: " PROMEDIO-MOSTRAR
     END-IF
     .
