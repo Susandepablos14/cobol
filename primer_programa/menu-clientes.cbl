@@ -38,11 +38,17 @@ FD ARCHIVO-TEMPORAL.
 
 
 WORKING-STORAGE SECTION.
+*> Estados de apertura de archivos (00=éxito, otros=error)
 01 ESTADO-ARCHIVO       PIC XX.
-01 OPCION-SELECCIONADA  PIC 9 VALUE 0.
+01 ESTADO-CONTEO        PIC XX.
+01 ESTADO-TEMP          PIC XX.
 
-01 ARCHIVO-CREADO       PIC X VALUE "N".
+*> Control de menús y flujo del programa
+01 OPCION-SELECCIONADA  PIC 9.
+01 ARCHIVO-CREADO       PIC X.
+01 OPCION-SELECCIONADA-REPORTE PIC 9.
 
+*> Estructura para captura de datos del cliente
 01 CLIENTE-INGRESADO.
    05 ID-INGRESADO         PIC 9(5).
    05 NOMBRE-INGRESADO     PIC X(30).
@@ -51,47 +57,47 @@ WORKING-STORAGE SECTION.
    05 SALDO-INGRESADO      PIC S9(5)V99.
    05 SALDO-TEXTO          PIC X(10).
 
-01 SALDO-MOSTRAR        PIC -Z(5).99.
-01 CONTADOR-ID          PIC 9(5) VALUE 0.
-01 ESTADO-CONTEO PIC XX.
-01 ULTIMO-ID-AUX PIC 9(5) VALUE 0.
-01 BUSCAR-ID PIC 9(5).
-01 ENCONTRADO PIC X VALUE "N".
-01 ESTADO-TEMP PIC XX.
-01 ACCION-ID PIC X(1) VALUE SPACE.
+*> Variables para operaciones con IDs y búsquedas
+01 CONTADOR-ID          PIC 9(5).
+01 ULTIMO-ID-AUX        PIC 9(5).
+01 BUSCAR-ID            PIC 9(5).
+01 ENCONTRADO           PIC X.
+01 ACCION-ID            PIC X(1).
 
-01 OPCION-SELECCIONADA-REPORTE  PIC 9 VALUE 0.
+*> Variables para filtros y reportes
+01 MONTO-FILTRO         PIC S9(5)V99.
+01 ORDEN-SELECCIONADO   PIC X.
 
-01 MONTO-FILTRO PIC S9(5)V99.
-
-01 ORDEN-SELECCIONADO PIC X VALUE SPACE.
-
+*> Tabla en memoria para ordenamiento y procesamiento
 01 TABLA-CLIENTES.
-   05 CLIENTE-TABLA OCCURS 100 TIMES INDEXED BY IDX IDX2.
+   05 CLIENTE-TABLA OCCURS 100 TIMES.
       10 ID-TABLA         PIC 9(5).
       10 NOMBRE-TABLA     PIC X(30).
       10 CORREO-TABLA     PIC X(40).
       10 TELEFONO-TABLA   PIC X(15).
       10 SALDO-TABLA      PIC S9(5)V99.
 
+*> Variables auxiliares para intercambios en ordenamiento
 01 AUX-ID       PIC 9(5).
 01 AUX-NOMBRE   PIC X(30).
 01 AUX-CORREO   PIC X(40).
 01 AUX-TELEFONO PIC X(15).
 01 AUX-SALDO    PIC S9(5)V99.
 
-01 INDICE-1     PIC 9(3) VALUE 1.
-01 INDICE-2     PIC 9(3) VALUE 1.
+*> Índices para bucles y procesamiento de tablas
+01 INDICE-1     PIC 9(3).
+01 INDICE-2     PIC 9(3).
 
-
-01 TOTAL-MOSTRAR PIC Z(5).
-
-01 SUMA-SALDOS        PIC S9(7)V99 VALUE 0.
-01 PROMEDIO-SALDO     PIC S9(5)V99 VALUE 0.
-01 PROMEDIO-MOSTRAR   PIC -Z(5).99.
+*> Variables para formato de salida y cálculos
+01 SALDO-MOSTRAR        PIC -Z(5).99.
+01 TOTAL-MOSTRAR        PIC Z(5).
+01 SUMA-SALDOS          PIC S9(7)V99.
+01 PROMEDIO-SALDO       PIC S9(5)V99.
+01 PROMEDIO-MOSTRAR     PIC -Z(5).99.
 
 PROCEDURE DIVISION.
 
+*> Controla el flujo principal y menú del programa
 PROGRAMA-PRINCIPAL.
     OPEN INPUT ARCHIVO-CLIENTES
     OPEN INPUT ARCHIVO-CONTEO
@@ -140,6 +146,7 @@ PROGRAMA-PRINCIPAL.
 
     PERFORM TERMINAR-PROGRAMA.
 
+*> Crea archivos iniciales si no existen
 INICIALIZAR-ARCHIVO.
     OPEN OUTPUT ARCHIVO-CLIENTES
     CLOSE ARCHIVO-CLIENTES
@@ -153,9 +160,11 @@ INICIALIZAR-ARCHIVO.
     DISPLAY "Archivos inicializados correctamente."
     .
 
+*> Finaliza la ejecución del programa
 TERMINAR-PROGRAMA.
     STOP RUN.
 
+*> Obtiene el último ID usado del archivo de secuencia
 LEER-ULTIMO-ID.
     OPEN INPUT ARCHIVO-CONTEO
     READ ARCHIVO-CONTEO
@@ -165,6 +174,7 @@ LEER-ULTIMO-ID.
     CLOSE ARCHIVO-CONTEO
     .
 
+*> Actualiza el contador de IDs con el nuevo valor
 GUARDAR-NUEVO-ID.
     MOVE ID-CLIENTE TO ULTIMO-ID
     OPEN OUTPUT ARCHIVO-CONTEO
@@ -172,6 +182,7 @@ GUARDAR-NUEVO-ID.
     CLOSE ARCHIVO-CONTEO
     .
 
+*> Añade un nuevo cliente al archivo
 AGREGAR-CLIENTE.
     PERFORM LEER-ULTIMO-ID
 
@@ -198,6 +209,7 @@ AGREGAR-CLIENTE.
     DISPLAY "Cliente agregado correctamente."
     .
 
+*> Solicita y valida los datos del cliente al usuario
 INGRESAR-DATOS-CLIENTE.
     PERFORM UNTIL NOMBRE-INGRESADO NOT = SPACES
         DISPLAY "Ingrese nombre completo:"
@@ -235,6 +247,7 @@ INGRESAR-DATOS-CLIENTE.
     MOVE SALDO-TEXTO TO SALDO-INGRESADO
     .
 
+*> Cuenta el total de clientes en el archivo
 CONTAR-CLIENTES.
     MOVE 0 TO CONTADOR-ID
     OPEN INPUT ARCHIVO-CLIENTES
@@ -247,6 +260,7 @@ CONTAR-CLIENTES.
     CLOSE ARCHIVO-CLIENTES
     .
 
+*> Lista todos los clientes registrados
 MOSTRAR-CLIENTES.
     PERFORM CONTAR-CLIENTES
     IF CONTADOR-ID = 0
@@ -273,6 +287,7 @@ MOSTRAR-CLIENTES.
     END-IF
     .
 
+*> Solicita ID para operaciones de búsqueda/actualización/eliminación
 PEDIR-ID.
     MOVE "N" TO ENCONTRADO
     MOVE 0 TO BUSCAR-ID
@@ -294,6 +309,7 @@ PEDIR-ID.
     END-PERFORM
     .
 
+*> Busca y muestra un cliente por su ID
 BUSCAR-CLIENTE.
     PERFORM CONTAR-CLIENTES
     IF CONTADOR-ID = 0
@@ -331,6 +347,7 @@ BUSCAR-CLIENTE.
     END-IF
     .
 
+*> Modifica los datos de un cliente existente
 ACTUALIZAR-CLIENTE.
     PERFORM CONTAR-CLIENTES
     IF CONTADOR-ID = 0
@@ -386,6 +403,7 @@ ACTUALIZAR-CLIENTE.
     END-IF
     .
 
+*> Elimina un cliente del sistema
 ELIMINAR-CLIENTE.
     PERFORM CONTAR-CLIENTES
     IF CONTADOR-ID = 0
@@ -429,6 +447,7 @@ ELIMINAR-CLIENTE.
     END-IF
     .
 
+*> Menú secundario para generar reportes
 GENERAR-REPORTES.
      MOVE ZERO TO OPCION-SELECCIONADA-REPORTE
 
@@ -468,6 +487,7 @@ GENERAR-REPORTES.
     PERFORM PROGRAMA-PRINCIPAL
     .
 
+*> Filtra clientes con saldo mayor a un monto específico
 CLIENTES-CON-SALDO-MAYOR.
     PERFORM CONTAR-CLIENTES
     IF CONTADOR-ID = 0
@@ -505,6 +525,7 @@ CLIENTES-CON-SALDO-MAYOR.
     END-IF
     .
 
+*> Muestra clientes con saldo negativo o cero
 CLIENTES-SALDO-NEGATIVO-O-CERO.
     PERFORM CONTAR-CLIENTES
     IF CONTADOR-ID = 0
@@ -538,6 +559,8 @@ CLIENTES-SALDO-NEGATIVO-O-CERO.
         END-IF
     END-IF
     .
+
+*> Ordena y muestra clientes por saldo (ascendente/descendente)
 CLIENTES-ORDENADOS-POR-SALDO.
     MOVE 0 TO CONTADOR-ID
     OPEN INPUT ARCHIVO-CLIENTES
@@ -609,6 +632,7 @@ CLIENTES-ORDENADOS-POR-SALDO.
     END-IF
     .
 
+*> Intercambia posiciones en la tabla para ordenamiento
 INTERCAMBIAR-CLIENTES.
     MOVE ID-TABLA(INDICE-1) TO AUX-ID
     MOVE NOMBRE-TABLA(INDICE-1) TO AUX-NOMBRE
@@ -629,7 +653,7 @@ INTERCAMBIAR-CLIENTES.
     MOVE AUX-SALDO TO SALDO-TABLA(INDICE-2)
     .
 
-
+*> Muestra el conteo total de clientes registrados
 MOSTRAR-TOTAL-CLIENTES.
     PERFORM CONTAR-CLIENTES
 
@@ -641,6 +665,7 @@ MOSTRAR-TOTAL-CLIENTES.
     END-IF
     .
 
+*> Calcula y muestra el promedio general de saldos
 CALCULAR-PROMEDIO-SALDO.
     MOVE 0 TO CONTADOR-ID
     MOVE 0 TO SUMA-SALDOS
