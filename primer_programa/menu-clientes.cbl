@@ -584,10 +584,10 @@ CLIENTES-ORDENADOS-POR-SALDO.
     IF CONTADOR-ID = 0
         DISPLAY "No hay clientes registrados en el sistema."
     ELSE
-        DISPLAY "¿Como desea ordenar los saldos?"
+        DISPLAY "Como desea ordenar los saldos?"
         DISPLAY "A. De menor a mayor"
         DISPLAY "B. De mayor a menor"
-        DISPLAY "Seleccione una opción (A/B):"
+        DISPLAY "Seleccione una opcion (A/B):"
         ACCEPT ORDEN-SELECCIONADO
 
         MOVE FUNCTION UPPER-CASE(ORDEN-SELECCIONADO) TO ORDEN-SELECCIONADO
